@@ -1,6 +1,7 @@
 package vue;
 
 import modele.Etat;
+import modele.Joueur;
 import modele.Modele;
 import modele.Zone;
 import obsv.Observer;
@@ -15,11 +16,12 @@ public class VueIle extends JPanel implements Observer, MouseListener {
     private final static int TAILLE=30;
     private MouseEvent over;
 
-    /**Initialisation des couleurs pour ne pas créer un nouvel objet Color à chaque fois*/
+    //Initialisation des couleurs pour ne pas créer un nouvel objet Color à chaque fois
     private final static Color vert = new Color(245, 220, 120);
     private final static Color bleu = new Color(50, 150, 150);
     private final static Color noir = new Color(10, 7, 171);
-    private final static Color rouge = new Color(171, 7, 0);
+
+    private final static Color[] couleurJoueur = {new Color(255, 0 , 0), new Color(255, 125, 0), new Color(255, 125, 200), new Color(165, 235, 166)};
 
     public VueIle(Modele modele){
         this.modele = modele;
@@ -30,32 +32,61 @@ public class VueIle extends JPanel implements Observer, MouseListener {
         addMouseListener(this);
     }
 
+
     public void paintComponent(Graphics g) {
         super.repaint();
-        /** Pour chaque cellule... */
+        //Pour chaque zone
         for(int i=1; i<=Modele.LARGEUR; i++) {
             for(int j=1; j<=Modele.HAUTEUR; j++) {
-                /**
-                 * ... Appeler une fonction d'affichage auxiliaire.
-                 * On lui fournit les informations de dessin [g] et les
-                 * coordonnées du coin en haut à gauche.
-                 */
-                paint(g, modele.getZone(i, j), (i-1)*TAILLE, (j-1)*TAILLE);
+                 // Appeler une fonction d'affichage auxiliaire.
+                 // On lui fournit les informations de dessin [g] et les
+                 // coordonnées du coin en haut à gauche.
+                paintZone(g, modele.getZone(i, j), (i-1)*TAILLE, (j-1)*TAILLE);
             }
         }
     }
 
-    private void paint(Graphics g, Zone zone, int x, int y) {
-        /** Sélection d'une couleur. */
+    private void paintZone(Graphics g, Zone zone, int x, int y) {
+        Color c = Color.GRAY;
+        // Sélection d'une couleur.
         if (zone.getEtat() == Etat.Normale) {
-            g.setColor(vert);
+            c = vert;
         } else if (zone.getEtat() == Etat.Submergee) {
-            g.setColor(noir);
+            c = noir;
         } else if (zone.getEtat() == Etat.Inondee) {
-            g.setColor(bleu);
-        } else g.setColor(Color.GRAY);
-        /** Coloration d'un rectangle. */
+            c = bleu;
+        } //else g.setColor(Color.GRAY);
+        // Coloration d'un rectangle.
+        if (mouseSelect(x, y)) g.setColor(c.darker()); else g.setColor(c);
         g.fillRect(x, y, TAILLE, TAILLE);
+        g.setColor(c.darker());
+        g.drawRect(x, y, TAILLE, TAILLE);
+        if (zone.hasJoueurOn()){
+            Joueur[] on = zone.getJoueur();
+            int i = 0;
+            int j = 0;
+            for (Joueur p : on) {
+                if(p.getNumJoueur() == 1) g.setColor(couleurJoueur[1]);
+                else if(p.getNumJoueur() == 2) g.setColor(couleurJoueur[2]);
+                else if(p.getNumJoueur() == 3) g.setColor(couleurJoueur[3]);
+                else g.setColor(couleurJoueur[0]);
+
+                if(i < TAILLE){
+                    g.fillRect(x+i, y, TAILLE/2, TAILLE/2);
+                    i+=TAILLE/2;
+                } else {
+                    g.fillRect(x+j, y, TAILLE/2, TAILLE/2);
+                    j+=TAILLE/2;
+                }
+            }
+        }
+    }
+
+    private boolean mouseSelect(int x, int y){
+        if (over == null ) return false;
+        boolean X = (x < over.getX()) && (over.getX() < (x + TAILLE));
+        boolean Y = ((y < over.getY()) && (over.getY() < y + TAILLE));
+        return (X && Y);
     }
 
 
@@ -63,51 +94,24 @@ public class VueIle extends JPanel implements Observer, MouseListener {
         repaint();
     }
 
-    private boolean mouseOver(int x, int y){
-        if(over == null) return false;
-        boolean X = (x < over.getX()) && (over.getX() < x + TAILLE);
-        boolean Y = (y < over.getY()) && (over.getY() < y + TAILLE);
-        return (X && Y);
-    }
-
 
     //Methodes du MouseListener
     public void mouseClicked(MouseEvent e) {
+
+    }
+
+    public void mousePressed(MouseEvent e) {
+        Zone z = modele.getZone((e.getX()/TAILLE) + 1, (e.getY()/TAILLE) + 1);
+        //System.out.print("\n Mouse Pressed at : " + z.getX() + " " + z.getY());
+        modele.actionJoueur(z);
         over = e;
         super.repaint();
     }
-    public void mousePressed(MouseEvent e) { }
-    public void mouseReleased(MouseEvent e) { }
-    /*public void mouseEntered(MouseEvent e) {
-        //FIXME ne repère pas la souris.
-        System.out.println(("yo")); //Ca s'affiche pas, ce qui veut dire que le passage de la souris n'est pas détecté, et je sais pas encore pourquoi
-
-        int x = e.getX(); //Recupere la position x de l'endroit où la souris est rentrée (evenement e).
-        int y = e.getY(); //Idem pour le y. A noter que je ne suis pas sûre de si la position est correcte : est ce que la position obtenue
-                        // est celle de la souris sur le component (c'est à dire sur VueIle, est dans ce cas là c'est bon) ou la position de la souris
-                        // sur toute la fenetre (cad que ça comprend l'espace avec le bouton "Tour Suivant", et là ça peut poser problème dans certains cas)
-        Graphics g = e.getComponent().getGraphics(); //Recupere le contexte graphique de l'evenement
-        super.repaint(); //à partir de là j'ai essayé de refaire l'action de paintComponent, mais sur une seule zone.
-        g.setColor(Color.BLACK);
-        g.fillRect(x%TAILLE, y%TAILLE, TAILLE, TAILLE);
-
-    }
-    public void mouseExited(MouseEvent e) { }
-    /** Afin de rendre la vue plus r�active, et � faciliter le rep�rage du curseur sur l'�le, on
-     * a impl�ment� les fonctions de l'interface MouseListener :
-     * - Lorque la souris entre sur la zone, celle-ci s'assombris.
-     * - Lorsque la souris quitte la zone, elle s'�clairci, ce qui revient � reprendre se couleur d'origine.**/
-    public void mouseEntered(MouseEvent e) {
-        changeColor(rouge.darker());
-    }
-    public void mouseExited(MouseEvent e) { changeColor(rouge.brighter()); }
-    /** Methode appel�e lorsqu'une zone doit changer de couleur.
-     * On modifie son attribut de couleur
-     * On sp�cifie la couleur de fond (= couleur de la zone, puisqu'elle est vide.)
-     * Enfin on appelle la methode de la classe m�re JPANEL qui r�affiche la zone.
-     * **/
-    public void changeColor(Color c) {
-        setBackground(c);
+    public void mouseReleased(MouseEvent e) {
+        over = null;
         super.repaint();
     }
+    public void mouseEntered(MouseEvent e) { }
+    public void mouseExited(MouseEvent e) { }
+
 }
