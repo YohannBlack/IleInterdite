@@ -12,6 +12,7 @@ public class Vue {
 
     public Vue(Modele modele) {
         frame = new JFrame();
+        frame.setLocation(500, 250);
         frame.setTitle("île interdite");
         frame.setLayout(new FlowLayout());
 

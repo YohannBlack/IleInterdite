@@ -2,6 +2,7 @@ package modele;
 
 import obsv.Observable;
 
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -14,21 +15,41 @@ public class Modele extends Observable {
     private Joueur[] joueurs; //Tableau de joueurs.
     private Joueur joueurActuel; //Joueur dont c'est le tour.
     private Action SELECTED_ACTION = Action.NONE;
-    private Zone[] zoneInit;
+    private Zone[] zoneInitPlayer;
+    private List<Zone> zoneInitArtefact = new ArrayList<>(); //Les zones ou seront les artefacts
+    protected List<Artefact> artefacts = new ArrayList<>();
 
-    private Random randomGenerator = new Random();
+    private final Random randomGenerator = new Random();
 
     public Modele(){
         zones = new Zone[LARGEUR+2][HAUTEUR+2];
         for(int i=0; i<LARGEUR+2; i++) {
             for(int j=0; j<HAUTEUR+2; j++) {
-                zones[i][j] = new Zone(this,i, j);
+                zones[i][j] = new Zone(this,i, j, Type.Normal);
+                if(i == LARGEUR/2 && j == HAUTEUR/2) zones[i][j] = new Zone(this, i, j, Type.Heliport);
             }
         }
+
+        //Initialisation des artefacts
+        initZoneArtefact();
+        initArtefact();
+
+        //FIXME debug
+        //Quand on run il y aura 4 zone en bleu fonce, les 4 zone avec les artefacts
+        //Le print dit qu'il y a bien les artefacts dans ces zones
+        //Mais impossible de les ramasser je ne sais pas pourquoi
+        //Lorsque je print getContainArtefact() dans la methode actionJoueur
+        //Appremment c'est sur false maintenant... Je ne sais pas quand est-ce que ca change
+        //ni pourquoi
+        for(Zone[]c : zones) {
+            for (Zone z : c)
+                System.out.println(z.getX() + " " + z.getY() + " " + z.getContainArtefact());
+        }
+
         init();
 
-        zoneInit = new Zone[4];
-        setZoneInit();
+        zoneInitPlayer = new Zone[4];
+        initPlayer();
 
         joueurs = new Joueur[JOUEURS];
         for (int i= 0; i<JOUEURS; i++) {
@@ -42,16 +63,37 @@ public class Modele extends Observable {
         for (Zone[] c : this.zones) {
             for (Zone z : c) {
                 z.etat = Etat.Normale;
+                //Si la zone contient un artefact on la submerge
+                if(z.getContainArtefact()) z.etat = Etat.Submergee;
             }
         }
     }
 
-    private void setZoneInit(){
-        zoneInit[0] = this.getZone(2, 2);
-        zoneInit[1] = this.getZone(9, 9);
-        zoneInit[2] = this.getZone(2, 9);
-        zoneInit[3] = this.getZone(9, 2);
+    /** Methode donnant les spawn point des differents joueurs */
+    private void initPlayer(){
+        zoneInitPlayer[0] = this.getZone(2, 2);
+        zoneInitPlayer[1] = this.getZone(HAUTEUR-1, LARGEUR-1);
+        zoneInitPlayer[2] = this.getZone(2, LARGEUR-1);
+        zoneInitPlayer[3] = this.getZone(HAUTEUR-1, 2);
     }
+
+    /** Methode donnant 4 zone aleatoire pour les 4 artefacts */
+    private void initZoneArtefact(){
+        for(int i = 0; i < 4; i++){
+            this.zoneInitArtefact.add(zoneAleatoire());
+        }
+    }
+
+    /**Methode permettant d'initialiser les 4 artefacts du jeu */
+    private void initArtefact(){
+        artefacts.add(new Artefact(this, Type.Feu));
+        artefacts.add(new Artefact(this, Type.Eau));
+        artefacts.add(new Artefact(this, Type.Terre));
+        artefacts.add(new Artefact(this, Type.Air));
+        //Pour chaque zone de zoneInitArtefact, on set un artefact
+        for(Zone z : zoneInitArtefact) z.setArtefact(artefacts.get(randomGenerator.nextInt(artefacts.size())));
+    }
+
 
 
     /**Methode qui renvoie la liste de zones de l'îles qui ne sont pas encore submergées**/
@@ -59,7 +101,7 @@ public class Modele extends Observable {
         ArrayList<Zone> res = new ArrayList<>();
         for(Zone[] c : this.zones) {
             for(Zone z : c) {
-                if (! (z.etat == Etat.Submergee)) res.add(z);
+                if ((z.etat != Etat.Submergee) && (z.getX() > 0 && z.getX() <= LARGEUR) && (z.getY() > 0 && z.getY() <= HAUTEUR)) res.add(z);
             }
         }
         return res;
@@ -87,7 +129,7 @@ public class Modele extends Observable {
             for(Zone z : c) {
                 // Pour chacune des zones de l'île, on appelle sa méthode evalue, qui calcule son prochain état.
                 // On précise à la méthode quelles sont les 3 zones qui ont été choisies aléatoirement pour
-                // être inondée.**/
+                // être inondée.
                 z.evalue(s1, s2, s3);
             }
         }
@@ -105,12 +147,14 @@ public class Modele extends Observable {
 
     public void tourJoueur(int i){
         joueurActuel = joueurs[i];
+        System.out.println("Tour du joueur : " + joueurActuel.getNumJoueur()+1);
         joueurActuel.debutTour();
     }
 
     public void actionJoueur(Zone cible){
-        System.out.print("\n Emplacement joueur " + joueurActuel.getZone().getX() + " " + joueurActuel.getZone().getY());
-        System.out.print("\n Zone cible : " + cible.getX() + " " + cible.getY());
+        System.out.println("Emplacement joueur " + joueurActuel.getZone().getX() + " " + joueurActuel.getZone().getY());
+        System.out.println("Zone cible : " + cible.getX() + " " + cible.getY());
+        System.out.println("Artefact ? " + cible.getContainArtefact());
         if (joueurActuel.getActionsRestantes() != 0) {
             switch(SELECTED_ACTION){
                 case DEPLACEMENT :
@@ -127,10 +171,17 @@ public class Modele extends Observable {
                     } else
                         System.out.println("Cette zone ne peut être assechée");
                     break;
+                case ARTEFACT:
+                    if(joueurActuel.getZone().trouveAdjacentes().contains(cible) && cible.getContainArtefact()){
+                        joueurActuel.pickUpArtefact(cible);
+                    } else
+                        System.out.println("Il n'y a pas d'artefact sur cette zone");
+                    break;
                 default: System.out.print("Selectionnez une action valide");
             }
         } else System.out.print(" Vous ne pouvez plus effectuer d'action.");
         System.out.print("\n Emplacement nouveau " + joueurActuel.getZone().getX()+ " " + joueurActuel.getZone().getY() + "\n");
+        notifyObservers();
     }
 
     /** Fin de partie lorsque la liste des cases non submergées est vide**/
@@ -139,9 +190,13 @@ public class Modele extends Observable {
         return nonSub.isEmpty();
     }
 
-    public Zone getZoneInit(int index){ return zoneInit[index]; }
+    public List<Zone> getZoneInitArtefact() { return zoneInitArtefact;}
+
+    public Zone getZoneInitPlayer(int index){ return zoneInitPlayer[index]; }
 
     public Zone getZone(int i, int j) {
         return zones[i][j];
     }
+
+    public Joueur getJoueurActuel(){ return joueurActuel; }
 }

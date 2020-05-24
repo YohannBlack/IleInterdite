@@ -7,15 +7,20 @@ import java.util.List;
 public class Zone {
     private Modele modele;
     protected Etat etat;
+    protected Type type;
     private final int x, y;
     private boolean occupee;
     private List<Joueur> joueursOn;
+    private boolean containsArtefact = false;
+    private Artefact artefact = null;
 
-    public Zone(Modele m, int i, int j){
+
+    public Zone(Modele m, int i, int j, Type t){
         this.modele = m;
         this.x = i;
         this.y = j;
         this.etat = Etat.Normale;
+        this.type = t;
         this.joueursOn = new ArrayList<>();
         this.occupee = false;
     }
@@ -69,9 +74,36 @@ public class Zone {
         );
     }
 
+    public boolean equals(Zone zone){
+        return this.x == zone.getX() && this.y == zone.getY();
+    }
+
     public Etat getEtat() {
         return this.etat;
     }
+
+    /** Methode permettant de placer un artefact dans la zone
+     * @param artefact a placer
+     */
+    public void setArtefact(Artefact artefact){
+        //Met containsArtefact a true puisqu'on place un artefact dans la zone
+        this.containsArtefact = true;
+        this.artefact = artefact;
+        modele.artefacts.remove(artefact);
+    }
+
+    /** Methode permettant de prendre l'artefact de la zone
+     * (Utiliser que par joueur)
+     * @return l'artefact de la zone que le joueur va prendre
+     */
+    public Artefact getArtefact(){
+        this.containsArtefact = false;
+        return this.artefact;
+    }
+
+    /** Methode permettant de voir s'il y a oui ou non un artefact dans la zone */
+    public boolean getContainArtefact(){ return this.containsArtefact;}
+
     /** METHODES D'ENCAPSULATION**/
 
     public Etat getSuiv() {
@@ -86,6 +118,8 @@ public class Zone {
         return res;
     }
 
+    public Type getType(){ return this.type; }
     public int getX() {return this.x;}
     public int getY() {return this.y;}
+
 }

@@ -1,27 +1,36 @@
 package vue;
 
-import modele.Etat;
-import modele.Joueur;
-import modele.Modele;
-import modele.Zone;
+import modele.*;
 import obsv.Observer;
 
+import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
 
 public class VueIle extends JPanel implements Observer, MouseListener {
+
+    private final static long serialVersionUID = 1L;
     private Modele modele;
     private final static int TAILLE=30;
     private MouseEvent over;
+    private BufferedImage[] imageJoueurs;
+    private Color[] couleurArtefact = { new Color(255, 128, 0, 150),
+                                         new Color(51, 255, 255, 150),
+                                         new Color(102, 51, 0, 150),
+                                         new Color(128, 128, 128, 150)
+                                        };
 
     //Initialisation des couleurs pour ne pas créer un nouvel objet Color à chaque fois
     private final static Color vert = new Color(245, 220, 120);
     private final static Color bleu = new Color(50, 150, 150);
     private final static Color noir = new Color(10, 7, 171);
 
-    private final static Color[] couleurJoueur = {new Color(255, 0 , 0), new Color(255, 125, 0), new Color(255, 125, 200), new Color(165, 235, 166)};
+//    private final static Color[] couleurJoueur = {new Color(255, 0 , 0), new Color(255, 125, 0), new Color(255, 125, 200), new Color(165, 235, 166)};
 
     public VueIle(Modele modele){
         this.modele = modele;
@@ -30,6 +39,17 @@ public class VueIle extends JPanel implements Observer, MouseListener {
                 TAILLE*Modele.HAUTEUR);
         this.setPreferredSize(dim);
         addMouseListener(this);
+
+        String[] filePaths = {"res/pionBleu.png", "res/pionRose.png", "res/pionVert.png", "res/pionRouge.png", "res/H.png" };
+        imageJoueurs = new BufferedImage[5];
+
+        for(int i = 0; i < 5; i++){
+            try{
+                imageJoueurs[i] = ImageIO.read(new File(filePaths[i]));
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
 
@@ -48,39 +68,72 @@ public class VueIle extends JPanel implements Observer, MouseListener {
 
     private void paintZone(Graphics g, Zone zone, int x, int y) {
         Color c = Color.GRAY;
-        // Sélection d'une couleur.
+
+        if (zone.getType() == Type.Heliport) {
+            c = Color.gray;
+            g.setColor(c);
+            g.fillRect(x, y, TAILLE, TAILLE);
+            g.setColor(Color.white);
+            g.drawImage(imageJoueurs[4], x, y , TAILLE, TAILLE, null);
+        }
+
+
+
+        //Sélection d'une couleur.
         if (zone.getEtat() == Etat.Normale) {
             c = vert;
         } else if (zone.getEtat() == Etat.Submergee) {
             c = noir;
         } else if (zone.getEtat() == Etat.Inondee) {
             c = bleu;
-        } //else g.setColor(Color.GRAY);
-        // Coloration d'un rectangle.
+        }
+
+
+        //on vérifie si il faut afficher la zone comme selectionnée par la souris
         if (mouseSelect(x, y)) g.setColor(c.darker()); else g.setColor(c);
+        //Coloration d'un rectangle. */
         g.fillRect(x, y, TAILLE, TAILLE);
+        //On dessiner les contour des zones d'une couleur plus foncée, pour mieux les reperer.
         g.setColor(c.darker());
         g.drawRect(x, y, TAILLE, TAILLE);
+
+        Color cArt = Color.GRAY;
+        if(zone.getContainArtefact() && zone.getArtefact().getType() == Type.Feu){
+            cArt = couleurArtefact[0];
+        } else if(zone.getContainArtefact() && zone.getArtefact().getType() == Type.Eau){
+            cArt = couleurArtefact[1];
+        } else if(zone.getContainArtefact() && zone.getArtefact().getType() == Type.Terre){
+            cArt = couleurArtefact[2];
+        } else if(zone.getContainArtefact() && zone.getArtefact().getType() == Type.Air){
+            cArt = couleurArtefact[3];
+        }
+
+        if(zone.getContainArtefact()){
+            g.setColor(cArt);
+            g.fillRect(x, y, TAILLE, TAILLE);
+            g.drawRect(x, y, TAILLE, TAILLE);
+        }
+
+        //Si la zone peinte est occupée par au moins un joueur, on peint ces joueurs.
         if (zone.hasJoueurOn()){
             Joueur[] on = zone.getJoueur();
             int i = 0;
             int j = 0;
+            int t = TAILLE;
+            if (on.length > 1) t = t/2;
             for (Joueur p : on) {
-                if(p.getNumJoueur() == 1) g.setColor(couleurJoueur[1]);
-                else if(p.getNumJoueur() == 2) g.setColor(couleurJoueur[2]);
-                else if(p.getNumJoueur() == 3) g.setColor(couleurJoueur[3]);
-                else g.setColor(couleurJoueur[0]);
-
-                if(i < TAILLE){
-                    g.fillRect(x+i, y, TAILLE/2, TAILLE/2);
-                    i+=TAILLE/2;
-                } else {
-                    g.fillRect(x+j, y, TAILLE/2, TAILLE/2);
-                    j+=TAILLE/2;
+                if(i < TAILLE) {
+                    g.drawImage(imageJoueurs[p.getNumJoueur()], x + i, y, t, t, null);
+                    i+= TAILLE/2;
+                }else{
+                    g.drawImage(imageJoueurs[p.getNumJoueur()], x + j, y + TAILLE/2, t, t, null);
+                    j+= TAILLE/2;
                 }
             }
         }
+
     }
+
 
     private boolean mouseSelect(int x, int y){
         if (over == null ) return false;
