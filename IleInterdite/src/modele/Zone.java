@@ -10,7 +10,7 @@ public class Zone {
     protected Type type;
     private final int x, y;
     private boolean occupee;
-    private List<Joueur> joueursOn;
+    protected List<Joueur> joueursOn;
     private boolean containsArtefact = false;
     private Artefact artefact = null;
 
@@ -25,11 +25,17 @@ public class Zone {
         this.occupee = false;
     }
 
+    /**Methode permettant de placer un joueur sur la zone
+     * @param j le joueur a placer
+     */
     public void putJoueur(Joueur j){
         this.joueursOn.add(j);
         this.occupee = true;
     }
 
+    /**Methode permettant de retirer le joueur sur la zone
+     * @param j le joueur a retirer
+     */
     public void removeJoueur(Joueur j){
         if(joueursOn.contains(j)){
             joueursOn.remove(j);
@@ -37,6 +43,9 @@ public class Zone {
         }
     }
 
+    /**Methode permettant de verifier sur la zone contient un joueur
+     * @return TRUE si c'est le cas
+     */
     public boolean hasJoueurOn(){ return this.occupee; }
 
     private Etat etatSuivant;
@@ -55,7 +64,8 @@ public class Zone {
 
     /** Evalue l'etat suivant de la zone, selon les differntes mécaniques de jeux :
      * 1- A la fin de chaque tour, trois zones choisies aléatoirement parmis celles qui ne sont pas encore submergées
-     * sont inondées**/
+     * sont inondées
+     * */
     protected void evalue(Zone s1, Zone s2, Zone s3) {
         if ((this == s1) || (this == s2) || (this == s3)) inonde();
         else this.etatSuivant = etat;
@@ -65,6 +75,9 @@ public class Zone {
         this.etat = this.etatSuivant;
     }
 
+    /** Methode permettant de trouver les zones adjacents (PAS EN DIAGONAL)
+     * @return une liste de zones adajcentes
+     */
     protected List<Zone> trouveAdjacentes(){
         return Arrays.asList(
                 modele.getZone(x, y - 1),
@@ -74,41 +87,41 @@ public class Zone {
         );
     }
 
-    public boolean equals(Zone zone){
-        return this.x == zone.getX() && this.y == zone.getY();
-    }
-
     public Etat getEtat() {
         return this.etat;
     }
+
+    public void setEtat(Etat etat){ this.etat = etat;}
 
     /** Methode permettant de placer un artefact dans la zone
      * @param artefact a placer
      */
     public void setArtefact(Artefact artefact){
-        //Met containsArtefact a true puisqu'on place un artefact dans la zone
         this.containsArtefact = true;
         this.artefact = artefact;
+        this.type = this.artefact.getType();
         modele.artefacts.remove(artefact);
     }
 
     /** Methode permettant de prendre l'artefact de la zone
-     * (Utiliser que par joueur)
+     * @WARNING: Utiliser que par Joueur.java
      * @return l'artefact de la zone que le joueur va prendre
      */
-    public Artefact getArtefact(){
+    public Artefact pickUpArtefact(){
+        //On change la valeur du boolean
         this.containsArtefact = false;
+        //On change la valeur du boolean de l'artefact
+        this.artefact.setPickedUp(true);
         return this.artefact;
     }
-
-    /** Methode permettant de voir s'il y a oui ou non un artefact dans la zone */
-    public boolean getContainArtefact(){ return this.containsArtefact;}
 
     /** METHODES D'ENCAPSULATION**/
 
     public Etat getSuiv() {
         return this.etatSuivant;
     }
+
+    public boolean getContainArtefact(){ return this.containsArtefact;}
 
     public Joueur[] getJoueur(){
         Joueur[] res = new Joueur[joueursOn.size()];
@@ -122,4 +135,5 @@ public class Zone {
     public int getX() {return this.x;}
     public int getY() {return this.y;}
 
+    public Artefact getArtefact() { return this.artefact; }
 }
